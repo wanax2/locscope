@@ -1,0 +1,32 @@
+# Builds LocScope.exe on GitHub's Windows machines whenever you push a tag like v1.2,
+# or when you press "Run workflow" on the Actions tab. The exe appears under the run's Artifacts
+# (and on the Release page for tags).
+name: Build LocScope.exe
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pyinstaller tzdata pillow pywebview
+      - run: >
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name LocScope
+          --add-data "report_template.html;." --add-data "locscope_app.html;." --add-data "mapdata;mapdata"
+          --hidden-import locscope --hidden-import locscope_extras --hidden-import locscope_more --hidden-import locscope_plus --collect-data tzdata --collect-all webview --hidden-import clr
+          locscope_app.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LocScope-exe
+          path: dist/LocScope.exe
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/LocScope.exe
